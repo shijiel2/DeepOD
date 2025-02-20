@@ -7,3 +7,6 @@ docs_output
 docs/generated
 .vscode
 sphinx-build
+
+dataset
+exps

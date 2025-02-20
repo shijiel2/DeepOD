@@ -7,6 +7,7 @@ import math
 import time
 from deepod.utils.utility import get_sub_seqs
 from deepod.core.base_model import BaseDeepAD
+from tqdm import tqdm
 
 
 class TimesNet(BaseDeepAD):
@@ -144,6 +145,7 @@ class TimesNet(BaseDeepAD):
                 print(f'epoch{e + 1:3d}, '
                       f'training loss: {loss:.6f}, '
                       f'time: {time.time() - t1:.1f}s')
+        print('Processing decisioin scores...')
         self.decision_scores_ = self.decision_function(X)
         self.labels_ = self._process_decision_scores()  # in base model
         return
@@ -200,7 +202,7 @@ class TimesNet(BaseDeepAD):
         criterion = nn.MSELoss()
         train_loss = []
 
-        for ii, batch_x in enumerate(dataloader):
+        for ii, batch_x in enumerate(tqdm(dataloader)):
             self.optimizer.zero_grad()
 
             batch_x = batch_x.float().to(self.device)  # (bs, seq_len, dim)
@@ -239,7 +241,7 @@ class TimesNet(BaseDeepAD):
         preds = []
 
         # with torch.no_gard():
-        for batch_x in dataloader:  # test_set
+        for batch_x in tqdm(dataloader):  # test_set
             batch_x = batch_x.float().to(self.device)
 
             outputs = self.net(batch_x)

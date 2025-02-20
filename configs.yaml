@@ -1,0 +1,9 @@
+Test:
+  seq_len: 30
+  stride: 10
+  hidden_dims: 100
+  kernel_size: 3
+  lr: 0.001
+  epochs: 50
+  rep_dim: 16
+  dropout: 0.2
