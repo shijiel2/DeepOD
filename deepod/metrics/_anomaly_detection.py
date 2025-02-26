@@ -140,7 +140,7 @@ def get_best_f1(label, score):
             The best score of recall.
     """
 
-    precision, recall, _ = metrics.precision_recall_curve(y_true=label, probas_pred=score)
+    precision, recall, _ = metrics.precision_recall_curve(y_true=label, y_score=score)
     f1 = 2 * precision * recall / (precision + recall + 1e-5)
     best_f1 = f1[np.argmax(f1)]
     best_p = precision[np.argmax(f1)]
