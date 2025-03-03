@@ -7,7 +7,7 @@ import logging
 import random
 import torch
 import pickle  # Add pickle import
-from deepod.models.time_series import TimesNet, COUTA, DeepSVDDTS, DeepIsolationForestTS, TranAD
+from deepod.models.time_series import TimesNet, COUTA, DeepSVDDTS, DeepIsolationForestTS, TranAD, SmoothedMedian
 from testbed.utils import data_standardize
 from deepod.metrics import ts_metrics, point_adjustment
 
@@ -117,7 +117,8 @@ def main():
         epochs=args.epochs,
         epoch_steps=args.epoch_steps,
         batch_size=args.batch_size,
-        lr=args.lr
+        lr=args.lr,
+        device='cuda' if torch.cuda.is_available() else 'cpu',
     )
     
     # Set up model with specific parameters
@@ -185,13 +186,23 @@ def main():
         'args': vars(args),  # Convert args to dictionary
         'timestamp': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
     }
+    
     logger.info('Collecting clean results...')
     scores = clf.decision_function(X_test)
-    eval_metrics = ts_metrics(labels, scores)
-    adj_eval_metrics = ts_metrics(labels, point_adjustment(labels, scores))
-    results['clean'] = eval_metrics
-    results['clean_adj'] = adj_eval_metrics
+    results['clean'] = ts_metrics(labels, scores)
+    results['clean_adj'] = ts_metrics(labels, point_adjustment(labels, scores))
+    results['clean_scores'] = scores.tolist()
 
+    logger.info('Collecting clean results...')
+    smoothed_clf = SmoothedMedian(clf, sigma=0.1)
+    s_scores = smoothed_clf.decision_function(X_test)
+    results['smoothed'] = ts_metrics(labels, s_scores)
+    results['smoothed_adj'] = ts_metrics(labels, point_adjustment(labels, s_scores))
+    results['smoothed_scores'] = s_scores.tolist()
+
+    print(f'if the results are equal: {np.array_equal(scores, s_scores)}')
+
+    # Save results to JSON file
     logger.info(f'Saving results to {exp_folder}/results.json')
     with open(f"{exp_folder}/results.json", 'w') as f:
         json.dump(results, f, indent=4)

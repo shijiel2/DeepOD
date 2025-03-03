@@ -150,7 +150,7 @@ class TimesNet(BaseDeepAD):
         self.labels_ = self._process_decision_scores()  # in base model
         return
 
-    def decision_function(self, X, return_rep=False):
+    def decision_function(self, X, return_rep=False, get_subseqs=True):
         """
         Computes the anomaly scores for each sample in X.
 
@@ -169,7 +169,7 @@ class TimesNet(BaseDeepAD):
                 
         """
                 
-        seqs = get_sub_seqs(X, seq_len=self.seq_len, stride=1)
+        seqs = get_sub_seqs(X, seq_len=self.seq_len, stride=1) if get_subseqs else X
         dataloader = DataLoader(seqs, batch_size=self.batch_size,
                                 shuffle=False, drop_last=False)
 
@@ -241,7 +241,7 @@ class TimesNet(BaseDeepAD):
         preds = []
 
         # with torch.no_gard():
-        for batch_x in tqdm(dataloader):  # test_set
+        for batch_x in dataloader:  # test_set
             batch_x = batch_x.float().to(self.device)
 
             outputs = self.net(batch_x)

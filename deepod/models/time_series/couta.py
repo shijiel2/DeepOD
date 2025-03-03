@@ -215,7 +215,7 @@ class COUTA(BaseDeepAD):
 
         return
 
-    def decision_function(self, X, return_rep=False):
+    def decision_function(self, X, return_rep=False, get_subseqs=True):
         """
         Predict raw anomaly score of X using the fitted detector.
         For consistency, outliers are assigned with larger anomaly scores.
@@ -236,7 +236,7 @@ class COUTA(BaseDeepAD):
                 The computed anomaly scores. numpy array of shape (n_samples,).
         """
         
-        test_sub_seqs = get_sub_seqs(X, seq_len=self.seq_len, stride=1)
+        test_sub_seqs = get_sub_seqs(X, seq_len=self.seq_len, stride=1) if get_subseqs else X
         test_dataset = _SubseqData(test_sub_seqs)
         dataloader = DataLoader(dataset=test_dataset, batch_size=self.batch_size, drop_last=False, shuffle=False)
 

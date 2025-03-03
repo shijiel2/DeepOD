@@ -14,6 +14,8 @@ from .dsad import DeepSADTS
 from .devnet import DevNetTS
 from .prenet import PReNetTS
 
+# smoothed models
+from .smoothed import SmoothedMedian
 
 __all__ = ['DeepIsolationForestTS', 'DeepSVDDTS', 'TranAD', 'USAD', 'COUTA',
-           'DeepSADTS', 'DevNetTS', 'PReNetTS', 'AnomalyTransformer', 'TimesNet', 'DCdetector']
+           'DeepSADTS', 'DevNetTS', 'PReNetTS', 'AnomalyTransformer', 'TimesNet', 'DCdetector', 'SmoothedMedian']

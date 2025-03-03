@@ -178,7 +178,7 @@ class DeepIsolationForestTS(BaseDeepAD):
 
         return self
 
-    def decision_function(self, X):
+    def decision_function(self, X, get_subseqs=True):
         """
         Predict raw anomaly scores of X using the fitted detector.
 
@@ -202,7 +202,7 @@ class DeepIsolationForestTS(BaseDeepAD):
             print('Start Inference...')
 
         testing_n_samples = X.shape[0]
-        X = get_sub_seqs(X, seq_len=self.seq_len, stride=1)
+        X = get_sub_seqs(X, seq_len=self.seq_len, stride=1) if get_subseqs else X
 
         self.score_lst = np.zeros([self.n_ensemble, testing_n_samples])
 
@@ -215,7 +215,8 @@ class DeepIsolationForestTS(BaseDeepAD):
             x_reduced = self._deep_transfer(X, self.net_lst[i], self.batch_size, self.device)
             scores = cal_score(x_reduced, self.iForest_lst[i])
 
-            padding = np.zeros(self.seq_len-1)
+            # padding = np.zeros(self.seq_len-1)
+            padding = np.zeros(testing_n_samples - scores.shape[0])
             scores = np.hstack((padding, scores))
 
             self.score_lst[i] = scores

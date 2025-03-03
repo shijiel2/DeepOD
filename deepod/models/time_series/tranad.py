@@ -105,7 +105,7 @@ class TranAD(BaseDeepAD):
         self.labels_ = self._process_decision_scores()
         return
 
-    def decision_function(self, X, return_rep=False):
+    def decision_function(self, X, return_rep=False, get_subseqs=True):
         """
         Computes anomaly scores for the given time series data.
 
@@ -124,7 +124,7 @@ class TranAD(BaseDeepAD):
             
         """
         
-        seqs = get_sub_seqs(X, seq_len=self.seq_len, stride=1)
+        seqs = get_sub_seqs(X, seq_len=self.seq_len, stride=1) if get_subseqs else X
         dataloader = DataLoader(seqs, batch_size=self.batch_size,
                                 shuffle=False, drop_last=False)
 

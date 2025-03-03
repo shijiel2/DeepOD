@@ -291,7 +291,7 @@ class BaseDeepAD(metaclass=ABCMeta):
         self.labels_ = self._process_decision_scores()
         return best_config
 
-    def decision_function(self, X, return_rep=False):
+    def decision_function(self, X, return_rep=False, get_subseqs=True):
         """Predict raw anomaly scores of X using the fitted detector.
 
         The anomaly score of an input sample is computed based on the fitted
@@ -316,7 +316,7 @@ class BaseDeepAD(metaclass=ABCMeta):
         testing_n_samples = X.shape[0]
 
         if self.data_type == 'ts':
-            X = get_sub_seqs(X, seq_len=self.seq_len, stride=1)
+            X = get_sub_seqs(X, seq_len=self.seq_len, stride=1) if get_subseqs else X
 
         representations = []
         s_final = np.zeros(testing_n_samples)
@@ -327,7 +327,8 @@ class BaseDeepAD(metaclass=ABCMeta):
             z, scores = self.decision_function_update(z, scores)
 
             if self.data_type == 'ts':
-                padding = np.zeros(self.seq_len-1)
+                # padding = np.zeros(self.seq_len-1)
+                padding = np.zeros(testing_n_samples - scores.shape[0])
                 scores = np.hstack((padding, scores))
 
             s_final += scores
