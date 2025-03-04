@@ -14,8 +14,9 @@ from deepod.metrics import ts_metrics, point_adjustment
 def parse_args():
     parser = argparse.ArgumentParser(description='Time Series Anomaly Detection')
     # General parameters
-    parser.add_argument('--dataset_root', type=str, default='dataset/DCdetector_dataset', help='Dataset root folder')
-    parser.add_argument('--dataset', type=str, default='MSL', help='Dataset name')
+    parser.add_argument('--data_train', type=str, default='dataset/DCdetector_dataset/UCR/UCR_1_train.npy', help='Train Dataset')
+    parser.add_argument('--data_test', type=str, default='dataset/DCdetector_dataset/UCR/UCR_1_test.npy', help='Test Dataset')
+    parser.add_argument('--data_test_label', type=str, default='dataset/DCdetector_dataset/UCR/UCR_1_test_label.npy', help='Test Label Dataset')
     parser.add_argument('--exps_root', type=str, default='exps', help='Experiments folder')
     parser.add_argument('--exp_name', type=str, default='test', help='Experiment name')
     parser.add_argument('--subset_size', type=int, default=-1, help='Subset size to use (-1 means all data)')
@@ -80,8 +81,9 @@ def set_seed(seed):
 def main():
     args = parse_args()
 
-    dataset_name = args.dataset
-    dataset_folder = f'{args.dataset_root}/{dataset_name}'
+    data_train_path = args.data_train
+    data_test_path = args.data_test
+    data_test_label_path = args.data_test_label
     exp_folder = f'{args.exps_root}/{args.exp_name}'
     os.makedirs(exp_folder, exist_ok=True)
     
@@ -95,10 +97,9 @@ def main():
     logger.info(f"Experiment started: {args.exp_name}")
     logger.info(f"Command line arguments: {vars(args)}")
     
-    logger.info(f'Loading dataset from {dataset_folder}...')
-    labels = np.load(dataset_folder + f'/{dataset_name}_test_label.npy')
-    X_train_df = pd.DataFrame(np.load(dataset_folder + f'/{dataset_name}_train.npy'))
-    X_test_df = pd.DataFrame(np.load(dataset_folder + f'/{dataset_name}_test.npy'))
+    test_labels = np.load(data_test_label_path)
+    X_train_df = pd.DataFrame(np.load(data_train_path))
+    X_test_df = pd.DataFrame(np.load(data_test_path))
     X_train, X_test = data_standardize(X_train_df, X_test_df)
 
     if args.subset_size != -1:
@@ -106,8 +107,8 @@ def main():
         subset_size = args.subset_size
         X_train = X_train[:subset_size]
         X_test = X_test[:subset_size]
-        labels = labels[:subset_size]
-    logger.info(f'Dataset shapes: X_train {X_train.shape}, X_test {X_test.shape}, labels {labels.shape}')
+        test_labels = test_labels[:subset_size]
+    logger.info(f'Dataset shapes: X_train {X_train.shape}, X_test {X_test.shape}, labels {test_labels.shape}')
 
     logger.info(f'Load model {args.model}')
     # Common params for all models
@@ -189,18 +190,17 @@ def main():
     
     logger.info('Collecting clean results...')
     scores = clf.decision_function(X_test)
-    results['clean'] = ts_metrics(labels, scores)
-    results['clean_adj'] = ts_metrics(labels, point_adjustment(labels, scores))
+    results['clean'] = ts_metrics(test_labels, scores)
+    results['clean_adj'] = ts_metrics(test_labels, point_adjustment(test_labels, scores))
     results['clean_scores'] = scores.tolist()
 
-    logger.info('Collecting clean results...')
+    logger.info('Collecting smoothed results...')
     smoothed_clf = SmoothedMedian(clf, sigma=0.1)
-    s_scores = smoothed_clf.decision_function(X_test)
-    results['smoothed'] = ts_metrics(labels, s_scores)
-    results['smoothed_adj'] = ts_metrics(labels, point_adjustment(labels, s_scores))
+    s_scores, radiis = smoothed_clf.decision_function(X_test)
+    results['smoothed'] = ts_metrics(test_labels, s_scores)
+    results['smoothed_adj'] = ts_metrics(test_labels, point_adjustment(test_labels, s_scores))
     results['smoothed_scores'] = s_scores.tolist()
-
-    print(f'if the results are equal: {np.array_equal(scores, s_scores)}')
+    results['radiis'] = radiis.tolist()
 
     # Save results to JSON file
     logger.info(f'Saving results to {exp_folder}/results.json')
