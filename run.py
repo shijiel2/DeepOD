@@ -27,12 +27,15 @@ def parse_args():
     # Common model parameters
     parser.add_argument('--seq_len', type=int, default=10, help='Sequence length')
     parser.add_argument('--stride', type=int, default=1, help='Stride')
-    parser.add_argument('--epochs', type=int, default=2, help='Number of epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='Number of epochs')
     parser.add_argument('--epoch_steps', type=int, default=-1, help='Number of steps per epoch (-1 means all data)')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
-    
-    # Model-specific parameters (add when needed)
+
+    # Smooth parameters
+    parser.add_argument('--sigma', type=float, default=0.1, help='Sigma for smoothing')
+    parser.add_argument('--window_size', type=int, default=2, help='Window size for smoothing')
+    parser.add_argument('--smooth_count', type=int, default=2000, help='Number of times to smooth')
     
     return parser.parse_args()
 
@@ -195,8 +198,8 @@ def main():
     results['clean_scores'] = scores.tolist()
 
     logger.info('Collecting smoothed results...')
-    smoothed_clf = SmoothedMedian(clf, sigma=0.1)
-    s_scores, radiis = smoothed_clf.decision_function(X_test)
+    smoothed_clf = SmoothedMedian(clf)
+    s_scores, radiis = smoothed_clf.decision_function(X_test, args.sigma, args.smooth_count, args.window_size)
     results['smoothed'] = ts_metrics(test_labels, s_scores)
     results['smoothed_adj'] = ts_metrics(test_labels, point_adjustment(test_labels, s_scores))
     results['smoothed_scores'] = s_scores.tolist()
