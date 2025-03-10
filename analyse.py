@@ -13,7 +13,7 @@ PARAMS = {
     'dataset': ['UCR_1', 'UCR_2', 'UCR_3'],
     'model': ['TimesNet', 'COUTA', 'DeepSVDDTS'],
     'epochs': ['20'],
-    'seq_len': ['10'],
+    'seq_len': ['10', '50'],
     'batch_size': ['64'],
     'sigma': ['0.1', '0.3', '0.5'],
     'w': ['2', '4'],
@@ -67,13 +67,8 @@ def process_results(results_data):
     adj_smoothed_roc_auc, adj_smoothed_average_precision_score, adj_smoothed_best_f1, adj_smoothed_best_p, adj_smoothed_best_r = adj_smoothed_metrics
     
     # Calculate average radius if available
-    try:
-        if isinstance(results_data['radiis'], list):
-            avg_radii = np.mean(results_data['radiis'])
-        else:
-            avg_radii = np.mean(results_data['radiis'])
-    except (KeyError, TypeError):
-        avg_radii = float('nan')
+    avg_radii = np.mean(results_data['radiis'])
+    radii_proportion = np.sum(np.array(results_data['radiis']) > 0.0) / len(results_data['radiis'])
     
     results_summary = {
         'Clean ROC AUC': clean_roc_auc,
@@ -96,7 +91,8 @@ def process_results(results_data):
         'Adjusted Smoothed Best F1': adj_smoothed_best_f1,
         'Adjusted Smoothed Best Precision': adj_smoothed_best_p,
         'Adjusted Smoothed Best Recall': adj_smoothed_best_r,
-        'Average Radius': avg_radii
+        'Average Radius': avg_radii,
+        'Certified Proportion': radii_proportion
     }
 
     return results_summary

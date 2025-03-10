@@ -75,7 +75,8 @@ class SmoothedMedian(nn.Module):
         points2 = batch_x.unsqueeze(1)
         
         # Compute all pairwise distances: [batch_size, seq_len, seq_len]
-        all_distances = torch.sqrt(torch.sum((points1 - points2) ** 2, dim=3)) / n_channels
+        # all_distances_1 = torch.sqrt(torch.sum((points1 - points2) ** 2, dim=3)) / n_channels
+        all_distances = torch.sum(torch.abs((points1 - points2)), dim=3) / n_channels
         
         # Mask out distances outside window and get max for each point
         masked_distances = all_distances.masked_fill(~mask, -float('inf'))
@@ -184,5 +185,6 @@ class SmoothedMedian(nn.Module):
         valid_indices = ~condition
         if np.any(valid_indices):
             radii[valid_indices] = np.sqrt(M[valid_indices]**2 + r[valid_indices]**2 - R2[valid_indices]) - M[valid_indices]
+        radii[condition] = -1.0
 
         return medians, radii
