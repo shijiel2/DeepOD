@@ -23,7 +23,7 @@ PARAMS = {
 }
 
 
-def create_range(start, end, step, decimal_places=1):
+def create_range(start, end, step, decimal_places=10):
     """
     Create a list from start to end with specified step size
     
@@ -42,46 +42,26 @@ def create_range(start, end, step, decimal_places=1):
     # Generate the list with proper rounding to avoid floating-point errors
     return [round(start + i * step, decimal_places) for i in range(num_steps)]
 
-
-def flip_label_by_radii(scores, radiis, radii_threshold, score_threshold, delta=0.001):
-    """
-    Flips the prediction labels for points with radius smaller than the threshold
-    
-    Args:
-        scores: Numpy array of anomaly scores
-        radiis: Numpy array of radius values corresponding to each score
-        radii_threshold: Threshold for determining small radius
-        score_threshold: Decision threshold for anomaly detection
-        delta: Small value to add/subtract when flipping labels (default 0.001)
-        
-    Returns:
-        Modified array of scores with flipped labels for uncertain points
-    """
-    # Create a copy to avoid modifying the original
-    modified_scores = scores.copy()
-    
-    # Create mask for small radius points
-    small_radius_mask = radiis < radii_threshold
-    
-    # For points with small radius below score_threshold, flip to anomaly
-    flip_to_anomaly = small_radius_mask & (scores < score_threshold)
-    modified_scores[flip_to_anomaly] = score_threshold + delta
-    
-    # For points with small radius at or above score_threshold, flip to normal
-    flip_to_normal = small_radius_mask & (scores >= score_threshold)
-    modified_scores[flip_to_normal] = score_threshold - delta
-    
-    return modified_scores
-
 def certified_f1_p_r(y_true, scores, radiis, radii_thresholds, score_threshold, point_adj=False):
     f1s = []
     ps = []
     rs = []
     for radii_threshold in radii_thresholds:
+        c_scores = scores.copy()
         if point_adj:
             c_scores = point_adjustment(y_true, c_scores)
-        c_scores = flip_label_by_radii(scores, radiis, radii_threshold, score_threshold)
         y_pred = (c_scores >= score_threshold).astype(int)
+        
+        # Flip ONLY CORRECTLY predicted labels for points with small radiis
+        small_radii_mask = (radiis < radii_threshold)
+        correct_pred_mask = (y_pred == y_true)
+        
+        # Combined mask for points that are both correctly predicted AND have small radius
+        flip_mask = small_radii_mask & correct_pred_mask
+        
+        # Flip only those points
+        y_pred[flip_mask] = 1 - y_pred[flip_mask]
+
         f1s.append(f1_score(y_true, y_pred))
         ps.append(precision_score(y_true, y_pred))
         rs.append(recall_score(y_true, y_pred))

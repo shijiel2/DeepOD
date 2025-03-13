@@ -217,7 +217,7 @@ def main():
         with open(f"{exp_folder}/saved_noise_scores.pkl", 'wb') as f:
             pickle.dump(saved_noise_scores, f)
     
-    radii_thresholds = create_range(0.0, 2.0, 0.1)
+    radii_thresholds = create_range(0.0, 2.0, 0.01)
     results['certified_radiis'] = radii_thresholds
 
     results['smoothed'] = ts_metrics(test_labels, scores)
