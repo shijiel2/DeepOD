@@ -12,6 +12,11 @@ from testbed.utils import data_standardize
 from deepod.metrics import ts_metrics, point_adjustment, get_best_f1_and_threshold
 from analyse import certified_f1_p_r, radii_stats, create_range
 
+def none_or_str(value):
+    if value.lower() == 'none':
+        return None
+    return value
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Time Series Anomaly Detection')
     # General parameters
@@ -23,8 +28,8 @@ def parse_args():
     parser.add_argument('--subset_size', type=int, default=-1, help='Subset size to use (-1 means all data)')
     parser.add_argument('--model', type=str, default='TimesNet', help='Model to use')
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
-    parser.add_argument('--load_model', type=str, default=None, help='Path to saved model to load (default: None)')
-    parser.add_argument('--load_noise_scores', type=str, default=None, help='Path to saved noise scores to load (default: None)')
+    parser.add_argument('--load_model', type=none_or_str, default=None, help='Path to saved model to load (default: None)')
+    parser.add_argument('--load_noise_scores', type=none_or_str, default=None, help='Path to saved noise scores to load (default: None)')
     
 
     # Common model parameters
