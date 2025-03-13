@@ -1,4 +1,3 @@
-from scipy.stats import norm
+from analyse import create_range
 
-print(norm.ppf(0.99999))
-print(norm.ppf(1e-5))
+print(create_range(0.0, 2.0, 0.1))

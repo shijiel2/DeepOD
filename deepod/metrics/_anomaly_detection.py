@@ -148,6 +148,39 @@ def get_best_f1(label, score):
     return best_f1, best_p, best_r
 
 
+def get_best_f1_and_threshold(label, score):
+    """
+    Return the best F1-score, precision and recall
+
+    Args:
+        label (np.array, required): 
+            Data label, 0 indicates normal timestamp, and 1 is anomaly.
+            
+        score (np.array, required): 
+            Predicted anomaly scores, higher score indicates higher likelihoods to be anomaly.
+
+    Returns:
+        tuple: A tuple containing:
+        
+        - best_f1 (float):
+            The best score of F1-score.
+        - best_p (float):
+            The best score of precision.
+        - best_r (float):
+            The best score of recall.
+        - threshold (float):
+            The best threshold for the F1-score.
+    """
+
+    precision, recall, thresholds = metrics.precision_recall_curve(y_true=label, y_score=score)
+    f1 = 2 * precision * recall / (precision + recall + 1e-5)
+    best_f1 = f1[np.argmax(f1)]
+    best_p = precision[np.argmax(f1)]
+    best_r = recall[np.argmax(f1)]
+    threshold = thresholds[np.argmax(f1)]
+    return best_f1, best_p, best_r, threshold
+
+
 def ts_metrics_enhanced(y_true, y_score, y_test):
     """
     This function calculates additional evaluation metrics for time series anomaly detection.

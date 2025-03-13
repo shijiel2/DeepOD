@@ -18,34 +18,48 @@ class SmoothedMedian(nn.Module):
     def __init__(self, base_model):
         super(SmoothedMedian, self).__init__()
         self.base_model = base_model
-        self.anomaly_score_threshold = self.base_model.threshold_
+        self.training_anomaly_score_threshold = self.base_model.threshold_
 
         self.base_model.verbose = 1
-        print(f"Anomaly score threshold: {self.anomaly_score_threshold}")
+        
 
-    def decision_function(self, X, sigma, smooth_count, window_size):
+    def decision_function(self, X, sigma, smooth_count, window_size, threshold=None, saved_noise_scores=None):
+        if threshold is None:
+            threshold = self.training_anomaly_score_threshold
+            print(f"Using training-time Anomaly Score Threshold: {threshold}")
+        else:
+            print(f"Using custom Anomaly Score Threshold: {threshold}")
+        if saved_noise_scores is None:
+            saved_noise_scores =[]
+            existing_noise_scores = False
+        else:
+            existing_noise_scores = True
+            print(f"Using existing batch noise scores list of length {len(saved_noise_scores)}")
+
         testing_n_samples = X.shape[0]
         seqs = get_sub_seqs(X, seq_len=self.base_model.seq_len, stride=1)
         dataloader = DataLoader(seqs, batch_size=self.base_model.batch_size,
                                 shuffle=False, drop_last=False)
-        
         scores_list = []
         radii_list = []
-        for batch_x in tqdm(dataloader):
+        for i, batch_x in enumerate(tqdm(dataloader)):
+            if existing_noise_scores:
+                batch_noise_scores = saved_noise_scores[i]
             # get the smoothed median score here and the radius
-            batch_noise_scores = []
-            for i in range(smooth_count):
-                with torch.no_grad():
-                    noise_batch_x = batch_x + torch.randn_like(batch_x) * sigma
-                    noise_scores = self.base_model.decision_function(noise_batch_x, get_subseqs=False)
-                    batch_noise_scores.append(noise_scores)
-            
-            batch_noise_scores = np.stack(batch_noise_scores, axis=0) # shape [smooth_count, batch_size]
-            
-            scores, radii = self.dtw_certify(batch_x, batch_noise_scores, sigma, window_size)
-            
+            else:
+                batch_noise_scores = []
+                for i in range(smooth_count):
+                    with torch.no_grad():
+                        noise_batch_x = batch_x + torch.randn_like(batch_x) * sigma
+                        noise_scores = self.base_model.decision_function(noise_batch_x, get_subseqs=False)
+                        batch_noise_scores.append(noise_scores)
+                batch_noise_scores = np.stack(batch_noise_scores, axis=0) # shape [smooth_count, batch_size]
+                saved_noise_scores.append(batch_noise_scores)
+
+            scores, radii = self.dtw_certify(batch_x, batch_noise_scores, sigma, window_size, threshold)
+        
             scores_list.append(scores)
-            radii_list.append(radii)
+            radii_list.append(radii)    
 
         scores = np.concatenate(scores_list)
         radii = np.concatenate(radii_list)
@@ -54,7 +68,7 @@ class SmoothedMedian(nn.Module):
         scores = np.hstack((padding, scores))
         radii = np.hstack((padding, radii))
         
-        return scores, radii
+        return scores, radii, saved_noise_scores
 
     
     def dtw_slack(self, batch_x, w):
@@ -75,8 +89,8 @@ class SmoothedMedian(nn.Module):
         points2 = batch_x.unsqueeze(1)
         
         # Compute all pairwise distances: [batch_size, seq_len, seq_len]
-        # all_distances_1 = torch.sqrt(torch.sum((points1 - points2) ** 2, dim=3)) / n_channels
-        all_distances = torch.sum(torch.abs((points1 - points2)), dim=3) / n_channels
+        all_distances = torch.sqrt(torch.sum((points1 - points2) ** 2, dim=3)) / n_channels
+        # all_distances = torch.sum(torch.abs((points1 - points2)), dim=3) / n_channels
         
         # Mask out distances outside window and get max for each point
         masked_distances = all_distances.masked_fill(~mask, -float('inf'))
@@ -123,7 +137,7 @@ class SmoothedMedian(nn.Module):
         
         return M, R2
 
-    def dtw_certify(self, batch_x, batch_noise_scores, sigma, window_size):
+    def dtw_certify(self, batch_x, batch_noise_scores, sigma, window_size, anomaly_score_threshold):
         batch_noise_scores = batch_noise_scores.T  # shape [batch_size, smooth_count]
         smooth_count = batch_noise_scores.shape[1]
         
@@ -137,12 +151,12 @@ class SmoothedMedian(nn.Module):
         percentiles = np.zeros_like(medians)
         
         # For rows where median > threshold
-        above_threshold_mask = medians > self.anomaly_score_threshold
+        above_threshold_mask = medians > anomaly_score_threshold
         if np.any(above_threshold_mask):
             # For each row where median > threshold, find lowest index where score > threshold
             for i in np.where(above_threshold_mask)[0]:
                 # Find first index where sorted score > threshold
-                indices = np.where(sorted_scores[i] > self.anomaly_score_threshold)[0]
+                indices = np.where(sorted_scores[i] > anomaly_score_threshold)[0]
                 if len(indices) > 0:
                     lowest_idx = indices[0]
                     # Convert to percentile (0-100)
@@ -156,7 +170,7 @@ class SmoothedMedian(nn.Module):
             # For each row where median <= threshold, find highest index where score < threshold
             for i in np.where(below_threshold_mask)[0]:
                 # Find last index where sorted score < threshold
-                indices = np.where(sorted_scores[i] < self.anomaly_score_threshold)[0]
+                indices = np.where(sorted_scores[i] < anomaly_score_threshold)[0]
                 if len(indices) > 0:
                     highest_idx = indices[-1]
                     # Convert to percentile (0-100)
@@ -185,6 +199,6 @@ class SmoothedMedian(nn.Module):
         valid_indices = ~condition
         if np.any(valid_indices):
             radii[valid_indices] = np.sqrt(M[valid_indices]**2 + r[valid_indices]**2 - R2[valid_indices]) - M[valid_indices]
-        radii[condition] = -1.0
+        radii[condition] = 0.0
 
         return medians, radii
