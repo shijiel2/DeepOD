@@ -4,7 +4,7 @@ conda_env="deepod"
 script_name="run.py"
 
 # Dataset paths
-dataset="SMAP"
+dataset="NIPS_TS_Water" # SMAP SMD MSL NIPS_TS_Swan NIPS_TS_creditcard NIPS_TS_Water
 dataset_sub=""
 
 data_train="dataset/DCdetector_dataset/${dataset}/${dataset}_train.npy"
@@ -12,28 +12,28 @@ data_test="dataset/DCdetector_dataset/${dataset}/${dataset}_test.npy"
 data_test_label="dataset/DCdetector_dataset/${dataset}/${dataset}_test_label.npy"
 
 
-load_model="exps/SMAP_TimesNet_epochs_10_seq_len_10_batch_size_64_sigma_0.1_w_2_smooth_count_500_seed_0_id_1004868/model.pkl"
-load_noise_scores="exps/SMAP_TimesNet_epochs_10_seq_len_10_batch_size_64_sigma_0.1_w_2_smooth_count_500_seed_0_id_1004868/saved_noise_scores.pkl"
+load_model="None"
+load_noise_scores="None"
 
 
 # General parameters
 exps_root="exps"
-model="TimesNet"
+model="COUTA"
 seed=0
-subset_size=10000  # -1 means use all data
+subset_size=-1  # -1 means use all data
 
 # Model parameters
-seq_len=10
+seq_len=50
 stride=1
-epochs=10
+epochs=20
 epoch_steps=-1  # -1 means use all data
 batch_size=64
 lr=0.001
 
 # Smooth parameters
-sigma=0.1
-window_size=2
-smooth_count=500
+sigma=0.8
+window_size=4
+smooth_count=1000
 
 # Generate a random experiment name
 id=$((RANDOM % 9000000 + 1000000))
@@ -62,4 +62,5 @@ arguments="--data_train $data_train \
 
 # Run the script with arguments
 echo "Running experiment: $exp_name"
+# python -m debugpy --listen 5678 --wait-for-client $script_name $arguments
 python $script_name $arguments

@@ -10,7 +10,7 @@ import pickle  # Add pickle import
 from deepod.models.time_series import TimesNet, COUTA, DeepSVDDTS, DeepIsolationForestTS, TranAD, SmoothedMedian
 from testbed.utils import data_standardize
 from deepod.metrics import ts_metrics, point_adjustment, get_best_f1_and_threshold
-from analyse import certified_f1_p_r, radii_stats, create_range
+from analyse import certified_f1_p_r, radii_stats, create_range, certified_stats
 
 def none_or_str(value):
     if value.lower() == 'none':
@@ -201,8 +201,8 @@ def main():
     
     logger.info('Collecting clean results...')
     scores = clf.decision_function(X_test)
-    results['clean'] = ts_metrics(test_labels, scores)
-    results['clean_adj'] = ts_metrics(test_labels, point_adjustment(test_labels, scores))
+    results['clean_metrics'] = ts_metrics(test_labels, scores)
+    results['clean_adj_metrics'] = ts_metrics(test_labels, point_adjustment(test_labels, scores))
 
     logger.info('Collecting smoothed results...')
     smoothed_clf = SmoothedMedian(clf)
@@ -222,28 +222,22 @@ def main():
         with open(f"{exp_folder}/saved_noise_scores.pkl", 'wb') as f:
             pickle.dump(saved_noise_scores, f)
     
-    radii_thresholds = create_range(0.0, 2.0, 0.01)
-    results['certified_radiis'] = radii_thresholds
+    radii_thresholds = create_range(0.0, 0.5, 0.005)
+    results['radii_thresholds'] = radii_thresholds
 
-    results['smoothed'] = ts_metrics(test_labels, scores)
+    results['smoothed_metrics'] = ts_metrics(test_labels, scores)
     _, _, _, score_threshold = get_best_f1_and_threshold(test_labels, scores)
     _, radiis, _ = smoothed_clf.decision_function(X_test, args.sigma, args.smooth_count, args.window_size, threshold=score_threshold, saved_noise_scores=saved_noise_scores)
     
     f1, p, r = certified_f1_p_r(test_labels, scores, radiis, radii_thresholds, score_threshold)
-    results['certified_f1'] = f1
-    results['certified_p'] = p
-    results['certified_r'] = r
-    results['radii_stats'] = radii_stats(radiis)
+    results['certified_stats'] = certified_stats(test_labels, scores, radiis, radii_thresholds, score_threshold)
     
-    results['smoothed_adj'] = ts_metrics(test_labels, point_adjustment(test_labels, scores))
+    results['smoothed_adj_metrics'] = ts_metrics(test_labels, point_adjustment(test_labels, scores))
     _, _, _, score_threshold = get_best_f1_and_threshold(test_labels, point_adjustment(test_labels, scores))
     _, radiis, _ = smoothed_clf.decision_function(X_test, args.sigma, args.smooth_count, args.window_size, threshold=score_threshold, saved_noise_scores=saved_noise_scores)
 
     f1, p, r = certified_f1_p_r(test_labels, scores, radiis, radii_thresholds, score_threshold, point_adj=True)
-    results['certified_adj_f1'] = f1
-    results['certified_adj_p'] = p
-    results['certified_adj_r'] = r
-    results['radii_adj_stats'] = radii_stats(radiis)
+    results['certified_adj_stats'] = certified_stats(test_labels, scores, radiis, radii_thresholds, score_threshold, point_adj=True)
 
     # Save results to JSON file
     logger.info(f'Saving results to {exp_folder}/results.json')
