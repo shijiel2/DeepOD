@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
     parser.add_argument('--load_model', type=none_or_str, default=None, help='Path to saved model to load (default: None)')
     parser.add_argument('--load_noise_scores', type=none_or_str, default=None, help='Path to saved noise scores to load (default: None)')
-    
+    parser.add_argument('--save_model', type=bool, default=False, help='Save model after training (default: False)')
 
     # Common model parameters
     parser.add_argument('--seq_len', type=int, default=10, help='Sequence length')

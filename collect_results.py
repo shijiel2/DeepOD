@@ -8,22 +8,36 @@ from itertools import product
 import subprocess
 
 # Define parameter options
-PARAMS = {
-    'dataset': ['UCR_1', 'UCR_2', 'UCR_3', 'SMAP_', 'SMD_'],
-    'model': ['COUTA'],
-    'epochs': ['20'],
-    'seq_len': ['50'],
+PARAMS_ABLATION = {
+    'dataset': ["SMD_", "NIPS_TS_Water_"],
+    'model': ['COUTA', 'DeepSVDDTS'],
+    'epochs': ['50'],
+    'seq_len': ['10', '50', '100', '200'],
     'batch_size': ['64'],
-    'sigma': ['0.3', '0.5', '0.8'],
-    'w': ['4'],
-    'smooth_count': ['1000'],
+    'sigma': ['0.5'],
+    'w': ['2', '4', '10'],
+    'smooth_count': ['500'],
     'seed': ['0']
 }
+
+PARAMS_INIT = {
+    'dataset': ["SMAP_", "SMD_", "UCR_1", "UCR_2", "MSL_", "NIPS_TS_Swan_", "NIPS_TS_creditcard_", "NIPS_TS_Water_"],
+    'model': ["TimesNet", "COUTA", "DeepSVDDTS"],
+    'epochs': ['50'],
+    'seq_len': ['50'],
+    'batch_size': ['64'],
+    'sigma': ['0.1', '0.5', '1.0'],
+    'w': ['4'],
+    'smooth_count': ['500'],
+    'seed': ['0']
+}
+
+PARAMS = PARAMS_INIT
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Time Series Anomaly Detection')
     parser.add_argument('--exp_folder', type=str, default='exps/init', help='Experiment folder')
-    parser.add_argument('--output', type=str, default='exps/init/collected_results.csv', 
+    parser.add_argument('--output', type=str, default=None, 
                         help='Path to save collected results (default: {exp_folder}/collected_results.json)')
     parser.add_argument('--rerun_results', type=bool, default=False, help='Re-run results.json files')
     return parser.parse_args()
@@ -78,7 +92,7 @@ def radii_stats_parser(radii_stats, header):
 def process_results(params, results_data):
     dataset, model, epochs, seq_len, batch_size, sigma, w, smooth_count, seed = params
     param_dict = {
-        'Dataset': dataset,
+        'Dataset': dataset.strip("_").replace("_", " ").upper(),
         'Model': model,
         'Epochs': epochs,
         'Sequence Length': seq_len,
@@ -98,12 +112,12 @@ def process_results(params, results_data):
     radii_stats = results_data['certified_stats']['radii_stats']
     radii_adj_stats = results_data['certified_adj_stats']['radii_stats']
 
-    metric_dict.update(metrics_parser(clean_metrics, 'Clean'))
-    metric_dict.update(metrics_parser(clean_adj_metrics, 'Clean Adj'))
-    metric_dict.update(metrics_parser(smoothed_metrics, 'Smoothed'))
-    metric_dict.update(metrics_parser(smoothed_adj_metrics, 'Smoothed Adj'))
-    metric_dict.update(radii_stats_parser(radii_stats, 'Radii'))
-    metric_dict.update(radii_stats_parser(radii_adj_stats, 'Radii Adj'))
+    metric_dict.update(metrics_parser(clean_metrics, 'Normal without adj'))
+    metric_dict.update(metrics_parser(clean_adj_metrics, 'Normal'))
+    metric_dict.update(metrics_parser(smoothed_metrics, 'Smoothed without adj'))
+    metric_dict.update(metrics_parser(smoothed_adj_metrics, 'Smoothed'))
+    metric_dict.update(radii_stats_parser(radii_stats, 'Radii without adj'))
+    metric_dict.update(radii_stats_parser(radii_adj_stats, 'Radii'))
 
     metric_names = metric_dict.keys()
 
@@ -117,12 +131,18 @@ def save_csv(all_results, param_names, metric_names):
     # Reorder columns to put parameters first, excluding Folder
     results_df = pd.DataFrame(all_results)
     results_df = results_df[list(param_names) + list(metric_names)]
+    # Format float columns
+    for col in metric_names:
+        if 'Proportion' not in col:
+            results_df[col] = results_df[col].astype(float).map(lambda x: f"{x:.3f}")
+        else:
+            results_df[col] = results_df[col].astype(float).map(lambda x: f"{x:.2f}")
+            
     
     # Save to CSV
     csv_output_path = args.output if args.output else os.path.join(args.exp_folder, "collected_results.csv")
     results_df.to_csv(csv_output_path, index=False)
     print(f"\nSaved results to CSV: {csv_output_path}")
-
 
 
 if __name__ == '__main__':
@@ -138,6 +158,16 @@ if __name__ == '__main__':
     found_combinations = sum(1 for folders in matching_folders.values() if folders)
     
     print(f"\nFound: {found_combinations}/{total_combinations} expected results")
+
+    if found_combinations != total_combinations:
+        print("Warning: Not all expected results were found.")
+    # Print the unfound combinations
+    unfound_combinations = [params for params, folders in matching_folders.items() if not folders]
+    if unfound_combinations:
+        print("Unfound combinations:")
+        for params in unfound_combinations:
+            print(f"dataset: {params[0]}, model: {params[1]}, epochs: {params[2]}, seq_len: {params[3]}, batch_size: {params[4]}, sigma: {params[5]}, w: {params[6]}, smooth_count: {params[7]}, seed: {params[8]}")
+        exit(0)
     
     # Initialize list to store collected results for CSV
     all_results = []
@@ -179,7 +209,7 @@ if __name__ == '__main__':
     # Save to CSV
     # param_names = list(param_names)
     param_names = ['Dataset', 'Model', 'Sigma']
-    metric_names = ['Clean F1', 'Smoothed F1', 'Radii Mean', 'Radii Proportion', 'Clean Adj F1', 'Smoothed Adj F1', 'Radii Adj Mean', 'Radii Adj Proportion']
+    metric_names = ['Normal F1', 'Normal ROC AUC', 'Smoothed F1', 'Smoothed ROC AUC', 'Radii Mean', 'Radii Proportion']
     save_csv(all_results, param_names, metric_names)
 
 
