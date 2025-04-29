@@ -17,6 +17,14 @@ def none_or_str(value):
         return None
     return value
 
+def str_to_bool(value):
+    if value.lower() in ('true', '1'):
+        return True
+    elif value.lower() in ('false', '0'):
+        return False
+    else:
+        raise ValueError(f"Invalid boolean value: {value}")
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Time Series Anomaly Detection')
     # General parameters
@@ -30,7 +38,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
     parser.add_argument('--load_model', type=none_or_str, default=None, help='Path to saved model to load (default: None)')
     parser.add_argument('--load_noise_scores', type=none_or_str, default=None, help='Path to saved noise scores to load (default: None)')
-    parser.add_argument('--save_model', type=bool, default=False, help='Save model after training (default: False)')
+    parser.add_argument('--save_model', type=str_to_bool, default=False, help='Save model after training (default: False)')
 
     # Common model parameters
     parser.add_argument('--seq_len', type=int, default=10, help='Sequence length')
@@ -44,7 +52,7 @@ def parse_args():
     parser.add_argument('--sigma', type=float, default=0.1, help='Sigma for smoothing')
     parser.add_argument('--window_size', type=int, default=2, help='Window size for smoothing')
     parser.add_argument('--smooth_count', type=int, default=2000, help='Number of times to smooth')
-    
+
     return parser.parse_args()
 
 
@@ -184,14 +192,18 @@ def main():
         clf.fit(X_train)
 
         # Save model using pickle
-        model_path = f"{exp_folder}/model.pkl"
-        logger.info(f'Saving trained model to {model_path}')
-        try:
-            with open(model_path, 'wb') as f:
-                pickle.dump(clf, f)
-            logger.info('Model saved successfully')
-        except Exception as e:
-            logger.error(f'Failed to save model: {str(e)}')
+        if args.save_model:
+            logger.info('Saving model...')
+            model_path = f"{exp_folder}/model.pkl"
+            logger.info(f'Saving trained model to {model_path}')
+            try:
+                with open(model_path, 'wb') as f:
+                    pickle.dump(clf, f)
+                logger.info('Model saved successfully')
+            except Exception as e:
+                logger.error(f'Failed to save model: {str(e)}')
+        else:
+            logger.info('Model not saved as per user request')
 
     # Collect results
     results = {
