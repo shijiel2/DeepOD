@@ -4,16 +4,17 @@ conda_env="deepod"
 script_name="run.py"
 
 # Dataset paths
-dataset="UCR" # SMAP SMD MSL NIPS_TS_Swan NIPS_TS_creditcard NIPS_TS_Water
-dataset_sub=""
+dataset="SMAP" # SMAP SMD MSL NIPS_TS_Swan NIPS_TS_creditcard NIPS_TS_Water
 
-data_train="dataset/DCdetector_dataset/${dataset}/${dataset}_2_train.npy"
-data_test="dataset/DCdetector_dataset/${dataset}/${dataset}_2_test.npy"
-data_test_label="dataset/DCdetector_dataset/${dataset}/${dataset}_2_test_label.npy"
+data_train="dataset/DCdetector_dataset/${dataset}/${dataset}_train.npy"
+data_test="dataset/DCdetector_dataset/${dataset}/${dataset}_test.npy"
+data_test_label="dataset/DCdetector_dataset/${dataset}/${dataset}_test_label.npy"
 
 
+save_model="True"
 load_model="None"
 load_noise_scores="None"
+dtw_ar_attack="True"
 
 
 # General parameters
@@ -31,9 +32,9 @@ batch_size=64
 lr=0.001
 
 # Smooth parameters
-sigma=0.8
+sigma=0.5
 window_size=4
-smooth_count=1000
+smooth_count=500
 
 # Generate a random experiment name
 id=$((RANDOM % 9000000 + 1000000))
@@ -58,7 +59,9 @@ arguments="--data_train $data_train \
           --window_size $window_size \
           --smooth_count $smooth_count \
           --load_model $load_model \
-          --load_noise_scores $load_noise_scores"
+          --load_noise_scores $load_noise_scores\
+          --save_model $save_model\
+          --dtw_ar_attack $dtw_ar_attack"
 
 # Run the script with arguments
 echo "Running experiment: $exp_name"

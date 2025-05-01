@@ -23,7 +23,7 @@ class SmoothedMedian(nn.Module):
         self.base_model.verbose = 1
         
 
-    def decision_function(self, X, sigma, smooth_count, window_size, threshold=None, saved_noise_scores=None):
+    def decision_function(self, X, sigma, smooth_count, window_size, threshold=None, saved_noise_scores=None, subseqs=None):
         if threshold is None:
             threshold = self.training_anomaly_score_threshold
             print(f"Using training-time Anomaly Score Threshold: {threshold}")
@@ -37,7 +37,7 @@ class SmoothedMedian(nn.Module):
             print(f"Using existing batch noise scores list of length {len(saved_noise_scores)}")
 
         testing_n_samples = X.shape[0]
-        seqs = get_sub_seqs(X, seq_len=self.base_model.seq_len, stride=1)
+        seqs = get_sub_seqs(X, seq_len=self.base_model.seq_len, stride=1) if subseqs is None else subseqs
         dataloader = DataLoader(seqs, batch_size=self.base_model.batch_size,
                                 shuffle=False, drop_last=False)
         scores_list = []

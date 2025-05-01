@@ -11,6 +11,7 @@ from deepod.models.time_series import TimesNet, COUTA, DeepSVDDTS, DeepIsolation
 from testbed.utils import data_standardize
 from deepod.metrics import ts_metrics, point_adjustment, get_best_f1_and_threshold
 from analyse import certified_f1_p_r, radii_stats, create_range, certified_stats
+from dtw_ar_attack import DTWARAttacker
 
 def none_or_str(value):
     if value.lower() == 'none':
@@ -39,6 +40,7 @@ def parse_args():
     parser.add_argument('--load_model', type=none_or_str, default=None, help='Path to saved model to load (default: None)')
     parser.add_argument('--load_noise_scores', type=none_or_str, default=None, help='Path to saved noise scores to load (default: None)')
     parser.add_argument('--save_model', type=str_to_bool, default=False, help='Save model after training (default: False)')
+    parser.add_argument('--dtw_ar_attack', type=str_to_bool, default=False, help='Use DTW-AR attack (default: False)')
 
     # Common model parameters
     parser.add_argument('--seq_len', type=int, default=10, help='Sequence length')
@@ -215,6 +217,15 @@ def main():
     scores = clf.decision_function(X_test)
     results['clean_metrics'] = ts_metrics(test_labels, scores)
     results['clean_adj_metrics'] = ts_metrics(test_labels, point_adjustment(test_labels, scores))
+    
+    if args.dtw_ar_attack:
+        assert args.model == 'COUTA', "DTW-AR attack is only implemented for COUTA model"
+        import copy
+        attacker = DTWARAttacker(model=copy.deepcopy(clf.net), seg_size=args.seq_len, channel_nb=X_test.shape[1], class_nb=2)
+        adv_test_sub_seqs = attacker.gen_adv_test_sub_seqs(X_test, test_labels, args.batch_size, clf.c, clf.threshold_, device=clf.device)
+        adv_scores = clf.decision_function(X_test, get_subseqs=False, subseqs=adv_test_sub_seqs)
+        adv_results = ts_metrics(test_labels, point_adjustment(test_labels, adv_scores))
+        results['adv_clean_metrics'] = adv_results
 
     logger.info('Collecting smoothed results...')
     smoothed_clf = SmoothedMedian(clf)
@@ -250,6 +261,11 @@ def main():
 
     f1, p, r = certified_f1_p_r(test_labels, scores, radiis, radii_thresholds, score_threshold, point_adj=True)
     results['certified_adj_stats'] = certified_stats(test_labels, scores, radiis, radii_thresholds, score_threshold, point_adj=True)
+
+    if args.dtw_ar_attack:
+        adv_scores, _, _ = smoothed_clf.decision_function(X_test, args.sigma, args.smooth_count, args.window_size, subseqs=adv_test_sub_seqs)
+        adv_results = ts_metrics(test_labels, point_adjustment(test_labels, adv_scores))
+        results['adv_smoothed_metrics'] = adv_results
 
     # Save results to JSON file
     logger.info(f'Saving results to {exp_folder}/results.json')
