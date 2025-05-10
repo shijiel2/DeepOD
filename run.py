@@ -130,6 +130,7 @@ def main():
         X_test = X_test[:subset_size]
         test_labels = test_labels[:subset_size]
     logger.info(f'Dataset shapes: X_train {X_train.shape}, X_test {X_test.shape}, labels {test_labels.shape}')
+    logger.info(f'Anomaly ratio: {np.sum(test_labels) / len(test_labels)}')
 
     logger.info(f'Load model {args.model}')
     # Common params for all models
