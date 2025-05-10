@@ -41,6 +41,7 @@ def parse_args():
     parser.add_argument('--load_noise_scores', type=none_or_str, default=None, help='Path to saved noise scores to load (default: None)')
     parser.add_argument('--save_model', type=str_to_bool, default=False, help='Save model after training (default: False)')
     parser.add_argument('--dtw_ar_attack', type=str_to_bool, default=False, help='Use DTW-AR attack (default: False)')
+    parser.add_argument('--dtw_ar_attack_budget', type=float, default=1.0, help='DTW-AR attack budget (default: 1.0)')
 
     # Common model parameters
     parser.add_argument('--seq_len', type=int, default=10, help='Sequence length')
@@ -222,7 +223,7 @@ def main():
         assert args.model == 'COUTA', "DTW-AR attack is only implemented for COUTA model"
         import copy
         attacker = DTWARAttacker(model=copy.deepcopy(clf.net), seg_size=args.seq_len, channel_nb=X_test.shape[1], class_nb=2)
-        adv_test_sub_seqs = attacker.gen_adv_test_sub_seqs(X_test, test_labels, args.batch_size, clf.c, clf.threshold_, device=clf.device)
+        adv_test_sub_seqs = attacker.gen_adv_test_sub_seqs(X_test, test_labels, args.batch_size, clf.c, clf.threshold_, args.window_size, args.dtw_ar_attack_budget, device=clf.device)
         adv_scores = clf.decision_function(X_test, get_subseqs=False, subseqs=adv_test_sub_seqs)
         adv_results = ts_metrics(test_labels, point_adjustment(test_labels, adv_scores))
         results['adv_clean_metrics'] = adv_results

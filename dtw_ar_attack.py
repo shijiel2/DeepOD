@@ -251,7 +251,7 @@ class DTWARAttacker:
         else:
             return X_adv
         
-    def gen_adv_test_sub_seqs(self, X_test, test_labels, batch_size, c, threshold, device):
+    def gen_adv_test_sub_seqs(self, X_test, test_labels, batch_size, c, threshold, window_size, dtw_budget, device):
     
         from deepod.models.time_series.couta import _SubseqData
         from torch.utils.data import DataLoader
@@ -272,7 +272,7 @@ class DTWARAttacker:
             x = x.float().to(device)
             y = y.long().to(device)
             x_adv = self.dtwar_attack(x, y, path=None, alpha=0.1, beta=0.1, eta=1e-10, rho=-5,
-                    max_iter=1e1, delta_l2_loss=1, dtw_path_tightness=4, max_dtw_budget=1.0)
+                    max_iter=1e1, delta_l2_loss=1, dtw_path_tightness=window_size, max_dtw_budget=dtw_budget)
             adv_test_sub_seqs.append(x_adv.cpu().numpy())
 
         adv_test_sub_seqs = np.concatenate(adv_test_sub_seqs, axis=0)
