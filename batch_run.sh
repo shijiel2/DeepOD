@@ -4,17 +4,17 @@ conda_env="deepod"
 script_name="run.py"
 
 # Dataset paths
-dataset="SMAP" # SMAP SMD MSL NIPS_TS_Swan NIPS_TS_creditcard NIPS_TS_Water
+dataset="UCR" # SMAP SMD MSL NIPS_TS_Swan NIPS_TS_creditcard NIPS_TS_Water
 
-data_train="dataset/DCdetector_dataset/${dataset}/${dataset}_train.npy"
-data_test="dataset/DCdetector_dataset/${dataset}/${dataset}_test.npy"
-data_test_label="dataset/DCdetector_dataset/${dataset}/${dataset}_test_label.npy"
+data_train="dataset/DCdetector_dataset/${dataset}/${dataset}_2_train.npy"
+data_test="dataset/DCdetector_dataset/${dataset}/${dataset}_2_test.npy"
+data_test_label="dataset/DCdetector_dataset/${dataset}/${dataset}_2_test_label.npy"
 
 
-save_model="True"
+save_model="False"
 load_model="None"
 load_noise_scores="None"
-dtw_ar_attack="True"
+dtw_ar_attack="False"
 
 
 # General parameters
